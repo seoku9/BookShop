@@ -1,8 +1,8 @@
 const conn = require("../db");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
-const { StatusCodes } = require("http-status-codes");
 dotenv.config();
+const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 
 const join = (req, res) => {
