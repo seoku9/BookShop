@@ -6,38 +6,44 @@ dotenv.config();
 const { StatusCodes } = require("http-status-codes");
 
 const allbooks = (req, res) => {
-  let category_id = req.query;
-  if (category_id) {
-    let sql = "SELECT * FROM books WHERE category_id=?";
-
-    let { category_id } = req.query;
-
-    conn.query(sql, category_id, (err, results) => {
-      if (err) {
-        console.log(err);
-        return res.status(StatusCodes.BAD_REQUEST).end();
-      }
-      if (results.length) return res.status(StatusCodes.CREATED).json(results);
-      else return res.status(StatusCodes.NOT_FOUND).end();
-    });
-  } else {
-    let sql = "SELECT * FROM books";
-
-    conn.query(sql, (err, results) => {
-      if (err) {
-        console.log(err);
-        return res.status(StatusCodes.BAD_REQUEST).end();
-      }
-      return res.status(StatusCodes.CREATED).json(results);
-    });
+  let { category_id, news, limit, currentPage } = req.query;
+  let offset = limit * currentPage - 1;
+  let sql =
+    "SELECT *, (SELECT count(*) FROM likes WHERE books.id=liked_book_id) AS likes FROM books";
+  let values = [];
+  if (category_id && news) {
+    sql +=
+      " WHERE category_id=? AND pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()";
+    values.push(category_id, news);
+  } else if (category_id) {
+    sql += " WHERE category_id=?";
+    values.push(category_id);
+  } else if (news) {
+    sql +=
+      " WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()";
+    // values.push(news);
   }
+
+  sql += " LIMIT ? OFFSET ?";
+  values.push(parseInt(limit), offset);
+
+  conn.query(sql, values, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(StatusCodes.BAD_REQUEST).end();
+    }
+    if (results.length) return res.status(StatusCodes.CREATED).json(results);
+    else return res.status(StatusCodes.NOT_FOUND).end();
+  });
 };
 const bookDetail = (req, res) => {
-  let sql = "SELECT * FROM books WHERE id=?";
+  let { user_id } = req.body;
+  let book_id = req.params.id;
+  let sql =
+    "SELECT *, (SELECT count (*) FROM likes WHERE liked_book_id=books.id) AS likes, (SELECT EXISTS (SELECT * FROM likes WHERE user_id=? AND liked_book_id=?)) AS liked FROM books LEFT JOIN category ON books.category_id = category.id WHERE books.id=?";
 
-  let { id } = req.params;
-
-  conn.query(sql, id, (err, results) => {
+  let values = [user_id, book_id, book_id];
+  conn.query(sql, values, (err, results) => {
     if (err) {
       console.log(err);
       return res.status(StatusCodes.BAD_REQUEST).end();
